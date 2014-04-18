@@ -1,0 +1,36 @@
+#sptk_meta_squeeze_page_selection {
+	margin-top: 25px;
+}
+
+.sptk_forms_control {
+	margin: 10px 20px;
+}
+
+.sptk_forms_control label {
+	font-weight: bold;
+}
+
+#sptk_form_settings input.sptk_form_input_medium {
+	width: 300px;
+}
+
+/* Messages */
+.sptk_msg {
+	padding: 10px;
+	border: 1px solid #ccc;
+	background-color: #efefef;
+	margin: 10px 0;
+	border-radius: 5px;
+	-webkit-border-radius: 5px;
+	-moz-border-radius: 5px;
+}
+
+.sptk_msg_ok {
+	background-color: #E0FDE2;
+	border-color: #008C0A;
+}
+
+.sptk_msg_error {
+	background-color: #FFEBE8;
+	border-color: #C00;
+}
