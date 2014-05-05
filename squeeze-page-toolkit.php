@@ -1,7 +1,7 @@
 <?php 
 /*
  * Plugin Name: Squeeze Page Toolkit
- * Version: 1.10
+ * Version: 1.11
  * Plugin URI: http://wordpress.org/plugins/squeeze-page-toolkit/
  * Description: The official plugin for the Squeeze Page Toolkit for WordPress, allowing you to show your squeeze pages on your WordPress website.
  * Author: WordPress Doctors
@@ -9,7 +9,7 @@
  */
 
 /** The current version of the database. */
-define('SPTK_DATABASE_VERSION', 		'1.10');
+define('SPTK_DATABASE_VERSION', 		'1.11');
 
 /** The current version of the database. */
 define('SPTK_DATABASE_KEY', 			'SPTK_Version');
@@ -68,6 +68,13 @@ function SPTK_plugin_init()
 		
 		// Cleanups - SEO meta, etc
 		add_action('add_meta_boxes', 							'SPTK_metabox_removeYoastSEO', 100000);
+		
+		// Settings link
+		add_filter('plugin_action_links', 						'SPTK_plugin_settingsLinks', 10, 2);
+		
+		// Notices about permalinks
+		add_action('admin_notices', 							'SPTK_plugin_permalinkCheck');
+		add_action('generate_rewrite_rules' , 					'SPTK_plugin_permalinkCheck_permalinksUpdated', 10, 1);
 	}
 
 	// ### Frontend
@@ -85,13 +92,49 @@ function SPTK_plugin_init()
 	
 	// Remove permalink for squeeze pages	
 	// http://vip.wordpress.com/documentation/remove-the-slug-from-your-custom-post-type-permalinks/
-	// 2013-10-15 - Method #2 - Removed for now.
-	add_action('pre_get_posts',  'SPTK_urlClean_findSqueezePage');  
-	add_filter('post_type_link', 'SPTK_urlClean_removeSlug', 10, 3);	
+	
+	// See if we're overriding the URL for compatibility. If we are, then we need to 
+	// disable our URL searching here. 
+	if (!apply_filters('sptk_compatibility_url_override', false)) 
+	{
+		add_action('pre_get_posts',  'SPTK_urlClean_findSqueezePage');  
+		add_filter('post_type_link', 'SPTK_urlClean_removeSlug', 10, 3);	
+	}
 }
 add_action('init', 'SPTK_plugin_init');
 
 
+
+
+/**
+ * Checks to see if the permalinks have been updated to be used with SPTK.
+ */
+function SPTK_plugin_permalinkCheck()
+{
+	// Check that permalinks have been updated recently, and we're using normal permalinks.
+	if (get_option('permalink_structure') && get_option('sptk_permalink_check') === FALSE)
+	{
+		printf('<div class="updated">
+					<p>%s</p>
+					<p>%s <b><a href="%s">%s</a></b>.</p>
+				</div>',
+		__("For the <b>Squeeze Page Toolkit</b> plugin to work correctly, please ensure update your <b>permalinks</b>.", 'sptk_for_wp'),
+		__("Just click '<b>Save Changes</b>' on the ", 'sptk_for_wp'),
+		admin_url('options-permalink.php'),
+		__('Permalink Settings page', 'sptk_for_wp')
+		);
+	}
+}
+
+
+/**
+ * Hook called when the permalinks are updated, so that the permalinks nag message does not show.
+ */
+function SPTK_plugin_permalinkCheck_permalinksUpdated()
+{
+	// Marks the permalink check as having been updated.
+	update_option('sptk_permalink_check', true);
+}
 
 
 
@@ -131,7 +174,8 @@ function SPTK_plugin_registerCustomPostTypes()
 		//'rewrite' 				=> array('with_front' => false, 'slug' => 'squeeze_page'),
 		
 		// DJH 2014-03-03 - Method #1
-		'rewrite' 				=> array('slug' => 'squeeze_page'),
+		// DJH 2014-05-06 - Added option using filters to override the slug URL
+		'rewrite' 				=> array('slug' => apply_filters('sptk_compatibility_url_override', 'squeeze_page')),
 	
         //'menu_icon' 			=> SPTK_plugin_getPluginPath().'img/icon_training_16.png',
         'show_in_nav_menus' 	=> true,		// Show in WP Custom Menus
@@ -266,6 +310,37 @@ function SPTK_menu_MainMenu()
 }
 
 
+
+
+/**
+ * Adds a 'Settings' link to the plugin settings line in the plugins page.
+ * 
+ * @param Array $links The links that are already going to be shown.
+ * @param String $file The plugin file.
+ * 
+ * @return Array The modified list of links.
+ */
+function SPTK_plugin_settingsLinks($links, $file)
+{
+    static $this_plugin;
+
+    if (!$this_plugin) {
+        $this_plugin = plugin_basename(__FILE__);
+    }
+
+    // Yep, it's this plugin, show the settings link.
+    if ($file == $this_plugin) 
+    {
+        array_unshift($links, sprintf('<a href="%sedit.php?post_type=squeeze_page&page=SPTK_showPage_Settings">%s</a>',
+        	admin_url('/'), 
+        	__('Settings', 'sptk_for_wp'))
+        );
+    }
+
+    return $links;
+}
+
+
 /**
  * Get the URL for the plugin path including a trailing slash.
  * @return String The URL for the plugin path.
@@ -308,5 +383,14 @@ function SPTK_metabox_removeYoastSEO() {
 }
 
 	
+/**
+ * Triggered when the plugin is activated to remind about permalinks.
+ */
+function SPTK_plugin_activated()
+{
+	// Deletes the permalink check.
+	delete_option('sptk_permalink_check');
+}
+register_activation_hook( __FILE__, 'SPTK_plugin_activated' );
 
 ?>
