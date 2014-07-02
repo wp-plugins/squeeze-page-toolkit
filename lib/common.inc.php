@@ -50,7 +50,8 @@ function SPTK_api_getListOfSqueezePages()
 	);
 	
 	$httpArgs = array(
-		'body'	=> array('apiKey' => TidySettings_getSettingSingle(SPTK_DATABASE_SETTINGS_KEY, 'remote_api_key')),
+		'body'		=> array('apiKey' => TidySettings_getSettingSingle(SPTK_DATABASE_SETTINGS_KEY, 'remote_api_key')),
+		'timeout'	=> 15, // 15 seconds
 	);
 	
 	// Do the actual request now
@@ -113,16 +114,28 @@ function SPTK_api_getSqueezePage($squeezePageID, $getThanksPage, $localPagePath)
 	
 	$httpArgs = array(
 		'body'	=> array(
-			'page_id'		=> $squeezePageID,							// The hash of the page ID.
-			'page_source'	=> 'wordpress',								// Add WordPress for tracking
-			'page_type'		=> ($getThanksPage ? 'thanks' : 'main'),	// Thanks or main page to show?
-			'page_redirect' => $localPagePath, 							// Redirect back to WP for the thanks page.
-			'apiKey' 		=> TidySettings_getSettingSingle(SPTK_DATABASE_SETTINGS_KEY, 'remote_api_key')
+			// The hash of the page ID. - the page being fetched.
+			'page_id'			=> $squeezePageID,							
+	
+			// Add WordPress for tracking - added to meta for statistics
+			'page_source'		=> 'wordpress',								
+	
+			// Thanks or main page to show?
+			'page_type'			=> ($getThanksPage ? 'thanks' : 'main'),	
+	
+			// URL to redirect back to WP for the thanks page.
+			'page_redirect' 	=> $localPagePath, 								
+	
+			// API key for access to an account
+			'apiKey' 			=> TidySettings_getSettingSingle(SPTK_DATABASE_SETTINGS_KEY, 'remote_api_key'),	
+	
+			// Site URL - needed for dynamic cache flushing from SPTK when pages are updated.
+			'page_host'			=> home_url('/'), 
 		),
 	);
 	
 	// Do the actual request now
-	$response = wp_remote_post(SPTK_API_BASE . '/singlepage/', $httpArgs);
+	$response = wp_remote_post(SPTK_API_BASE . '/single_page_details/', $httpArgs);
 	
 	// Check for WordPress error.
 	if (is_wp_error($response)) {  
@@ -225,39 +238,45 @@ function SPTK_templates_templatePageOverride()
 {
 	global $post;
 	
-    // 1) See if there's a homepage override
-    if (is_front_page())
-    {    	
-    	// See if we have a page to use from the toolkit.
-		$homepageID = TidySettings_getSettingSingle(SPTK_DATABASE_SETTINGS_KEY, 'homepage_squeeze', false);
-		if ($homepageID)
+	// See if there is a post object to override.
+	if ($post)
+	{	
+	    // 1) See if there's a homepage override.
+	    // If there's a parameter of 'thanks=yep', then is_front_page() returns false for some odd reason.
+	    // So we check for the thanks parameter to determine if this is really the thanks page for home.
+	    if (is_front_page() || (is_home() && isset($_GET['thanks'])))
+	    {    	
+	    	// See if we have a page to use from the toolkit.
+			$homepageID = TidySettings_getSettingSingle(SPTK_DATABASE_SETTINGS_KEY, 'homepage_squeeze', false);
+			if ($homepageID)
+			{
+				// Use the homepage URL.
+				$localPagePermalink = home_url('/');
+				
+				SPTK_page_getPageViaAPI($homepageID, $localPagePermalink, '_homepage_squeeze');
+				exit;
+			}
+	    }
+	     
+		// 2) Normal Squeeze Page 
+		else if ($post->post_type == 'squeeze_page')
 		{
-			// Use the homepage URL.
-			$localPagePermalink = home_url('/');
+			// Need ID from meta to determine which page to use
+			$selectedPage = trim(get_post_meta($post->ID, '_sptk_associated_page_id', true));
 			
-			SPTK_page_getPageViaAPI($homepageID, $localPagePermalink, '_homepage_squeeze');
+			// Get the full page of the page to use for the opengraph data.		 
+			$localPagePermalink = get_permalink($post);
+			
+			// Ensure that the page contains something, as a quick sanity check
+			if (!$selectedPage) {
+				printf('<p>%s</p>', __('Oops, you need to select a squeeze page first.', 'sptk_for_wp'));
+			}
+			
+			SPTK_page_getPageViaAPI($selectedPage, $localPagePermalink);
+			
 			exit;
-		}
-    }
-     
-	// 2) Normal Squeeze Page 
-	else if ($post->post_type == 'squeeze_page')
-	{
-		// Need ID from meta to determine which page to use
-		$selectedPage = trim(get_post_meta($post->ID, '_sptk_associated_page_id', true));
-		
-		// Get the full page of the page to use for the opengraph data.		 
-		$localPagePermalink = get_permalink($post);
-		
-		// Ensure that the page contains something, as a quick sanity check
-		if (!$selectedPage) {
-			printf('<p>%s</p>', __('Oops, you need to select a squeeze page first.', 'sptk_for_wp'));
-		}
-		
-		SPTK_page_getPageViaAPI($selectedPage, $localPagePermalink);
-		
-		exit;
-     }
+	     }
+	}
 }
 
 
@@ -286,8 +305,9 @@ function SPTK_page_getPageViaAPI($selectedPage, $localPagePermalink, $transientK
     } 				
 	
 	// See if we have any cached page stored, if so, use it.
-	if (!SPTK_DEBUG_MODE && ($htmlCached = get_transient($pageCacheID)) !== false) {
-		echo $htmlCached;
+	$pageList = SPTK_cache_getAllPagesForCacheID($pageCacheID);
+	if (!empty($pageList)) {
+		echo SPTK_page_returnRandomPage_fromPageCacheList($pageList, $pageCacheID);
 		exit;
 	}
 	
@@ -295,25 +315,209 @@ function SPTK_page_getPageViaAPI($selectedPage, $localPagePermalink, $transientK
 	$resultData = SPTK_api_getSqueezePage($selectedPage, $thanksMode, $localPagePermalink);
 	if ($resultData['success'])
 	{			
-		// Fetch the page data 
-		$html = $resultData['data']['html'];
+		// Clear cache for all variations of this particular page, before we add the cached
+		// versions.
+		SPTK_cache_clearPageData($pageCacheID);
 		
-		// Do the changes to the URL for open-graph that makes it use the right permalink.
-		//<meta property="og:url" content="http://sptk.squeezepagetoolkit.com/free-tips"/>
-		$html = preg_replace('%<meta property="og:url" content="[^>]+?"/>%', '<meta property="og:url" content="' . $localPagePermalink .'"/>', $html);
+		// Data for each page is stored in page_0, page_1, etc.
+		// If there is just 1 page, then just page_0 is returned
+		$pageIndex = 0;
+		while (isset($resultData['data']['page_' . $pageIndex]))
+		{
+			$dataIndex = 'page_' . $pageIndex;
+			
+			// Get this particular page of data
+			$html = $resultData['data'][$dataIndex];
+			
+			// Get the SPTK Hash of the page. Make the hash unique for this website. It's assumed
+			// that the hash is valid and being returned, hence no error checking here.
+			$pageHash = $resultData['data'][$dataIndex . '_hash'];
+			$pageHash = md5(home_url('/') . $dataIndex . $pageHash);
+			
+			// Do the changes to the URL for open-graph that makes it use the right permalink.
+			//<meta property="og:url" content="http://sptk.squeezepagetoolkit.com/free-tips"/>
+			$html = preg_replace('%<meta property="og:url" content="[^>]+?"/>%', '<meta property="og:url" content="' . $localPagePermalink .'"/>', $html); 
+
+			// Add this page to the cache
+			SPTK_cache_addPageData($pageCacheID, $dataIndex, $html, $pageHash);
+			
+			// Try next page
+			$pageIndex++;
+		}
 		
-		// Cache the page results
-		set_transient($pageCacheID, $html, 43200); // 12 hours
+		$pageList = SPTK_cache_getAllPagesForCacheID($pageCacheID);
+		if (!empty($pageList)) {
+			echo SPTK_page_returnRandomPage_fromPageCacheList($pageList, $pageCacheID);
+			exit;
+		} 
 		
-		// Show it
-		echo $html;
+		// Just in case.
+		else {
+			$resultData['error_msg'] = __('Could not fetch the pages from the cache.', 'sptk_for_wp');	
+		}
 	}
 	
-	// Page not found, so an error.
-	else {
-		printf('<p>%s</p>', __('Unfortunately this page could not be shown. ', 'sptk_for_wp'));
-		printf('<p><b>%s</b> %s</p>', __('The reason why:', 'sptk_for_wp'), $resultData['error_msg']);
+	// Page not found, so an error. If we got here, then 
+	printf('<p>%s</p>', __('Unfortunately this page could not be shown. ', 'sptk_for_wp'));
+	printf('<p><b>%s</b> %s</p>', __('The reason why:', 'sptk_for_wp'), $resultData['error_msg']);
+}
+
+
+/**
+ * Assuming we have an array of page cache objects, we should just be able to choose
+ * a random item from the list.
+ * 
+ * @param $pageList Array The list of pages from the cache to choose from.
+ * @param $selectedPageID String The ID of the page that we're showing this for. 
+ * 
+ * @return String The HTML for the random page.
+ */
+function SPTK_page_returnRandomPage_fromPageCacheList($pageList, $selectedPageID)
+{
+	if (empty($pageList)) {
+		return __('Could not load page data.', 'sptk_for_wp');
 	}
+	
+	// There's only 1 item in the list, so return it.
+	if (1 == count($pageList))
+	{
+		return $pageList[0]->page_html;
+	}
+	
+	// Got more than 1 choice, so we need to check for a cookie to see if we're using
+	// a specific page.
+	else 
+	{
+		// Stores the ID within $pageList of the item to use for the variation.
+		// This is a 0-index array, so invalid value is less than 0.
+		$pageListIndexToUse = -1;
+		
+		// Create a unique parameter for the cookie that uses the selected page ID
+		// i.e. the controling page/url we're showing a split test variation for.
+		$variationCookieName = 'sptk_ab_var_' . md5($selectedPageID);
+		
+		// Try to get the value stored in the cookie - to see if it matches one of the
+		// variations in our list.
+		$variationHashToUse_unchecked = false;
+		if (isset($_COOKIE[$variationCookieName]) && $variationHashToUse_unchecked = $_COOKIE[$variationCookieName])
+		{
+			// Assume that the data may be dirty, hence the regex
+			if (preg_match('/^[a-zA-Z0-9]{32}$/', $variationHashToUse_unchecked))
+			{
+				// Try to find this hash inside the list of pages.
+				foreach ($pageList as $variation)
+				{
+					// Found the variation locked through the cookie. Stop here.
+					if ($variation->page_hash == $variationHashToUse_unchecked) {
+						return $variation->page_html;
+					}
+				}
+			}
+		}
+		
+		// Got here, so we've not already locked the variation. So lock it and return a random selection.
+		// Use PHP randomisation to find a page and then return it.
+		$indexOfChoice = array_rand($pageList, 1);
+		
+		// Locked in a cookie - time delay of 1 year.
+		setcookie($variationCookieName, $pageList[$indexOfChoice]->page_hash, time()+31556926, '/');
+		
+		// Finally return the HTML.
+		return $pageList[$indexOfChoice]->page_html;
+	}
+}
+
+
+/**
+ * Remove the page cache for the specified cached page ID (this will be for an actual page, or a thank you page).
+ * 
+ * @param String $pageCacheID The ID of the page in the cache.
+ */
+function SPTK_cache_clearPageData($pageCacheID)
+{
+	global $wpdb, $sptkdb;
+	$wpdb->show_errors();
+	
+	// Code assumes that there are no prior entries for this page before insert
+	// simply because we clear this cache before calling this function
+	$wpdb->query($wpdb->prepare("
+		DELETE FROM $sptkdb->page_cache
+		WHERE page_cache_id = %s
+	", $pageCacheID
+	));
+}
+
+
+/**
+ * Remove the page cache for all pages that use part of an ID, usually just the hashed page ID.
+ * 
+ * @param String $pageHash The hash of the page in the cache.
+ */
+function SPTK_cache_clearPageData_byHash($pageHash)
+{
+	global $wpdb, $sptkdb;
+	$wpdb->show_errors();
+	
+	// Code assumes that there are no prior entries for this page before insert
+	// simply because we clear this cache before calling this function
+	$wpdb->query($wpdb->prepare("
+		DELETE FROM $sptkdb->page_cache
+		WHERE page_cache_id LIKE %s
+	", '%%_' . $pageHash . '%%'
+	));
+}
+
+/**
+ * Gets all of the cached HTML data for pages that match the specified page ID.
+ * 
+ * @param String $pageCacheID The ID of the page in the cache to get.
+ */
+function SPTK_cache_getAllPagesForCacheID($pageCacheID)
+{
+	global $wpdb, $sptkdb;
+	$wpdb->show_errors();
+	
+	// Get the cache expire after 7 days?
+	/*$wpdb->query($wpdb->prepare("
+		DELETE FROM $sptkdb->page_cache
+		WHERE page_cached_date < %s
+	", date('Y-m-d H:i:s', current_time('timestamp') - (7*24*60*60))
+	));*/
+	
+	// Code assumes that there are no prior entries for this page before insert
+	// simply because we clear this cache before calling this function
+	return $wpdb->get_results($wpdb->prepare("
+		SELECT * 
+		FROM $sptkdb->page_cache
+		WHERE page_cache_id = %s
+	", $pageCacheID
+	));
+}
+
+
+
+
+/**
+ * Add the specified page to the cache.
+ * 
+ * @param String $pageCacheID The ID of the page in the cache.
+ * @param String $dataIndex The index of the page when showing multiple pages.
+ * @param String $html The HTML for this specific page.
+ * @param String $pageHash The page ID hash for the cache.
+ */
+function SPTK_cache_addPageData($pageCacheID, $dataIndex, $html, $pageHash)
+{
+	global $wpdb, $sptkdb;
+	$wpdb->show_errors();
+	
+	// Code assumes that there are no prior entries for this page before insert
+	// simply because we clear this cache before calling this function
+	$wpdb->query($wpdb->prepare("
+		INSERT INTO $sptkdb->page_cache
+		(page_cache_id, page_index, page_html, page_cached_date, page_hash) 
+		VALUES (%s, %s, %s, %s, %s)
+	", $pageCacheID, $dataIndex, $html, current_time('mysql'), $pageHash
+	));
 }
 
 
@@ -439,6 +643,20 @@ function SPTK_arrays_getValue($array, $key, $returnDefault = false)
 	}
 	
 	return $returnDefault;
+}
+
+
+
+/**
+ * Function that can be used to clear all page caches.
+ */
+function SPTK_cache_clearCacheAllPages()
+{
+	global $wpdb, $sptkdb;
+	$wpdb->show_errors();
+	
+	// Just delete all of the caches - very simple.
+	$wpdb->query("TRUNCATE TABLE $sptkdb->page_cache");
 }
 
 

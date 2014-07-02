@@ -1,6 +1,65 @@
 <?php
 
 
+ 
+// Not used currently, kept here for future implementation.
+/**
+ * Add new columns (and labels) to the squeeze page meta data for the page summary.
+ * @param Array $listing_columns The column data being shown.
+ * @return Array The modified columns to render. 
+ */
+/*
+function SPTK_admin_table_addPageMetadata_headings($listing_columns)
+{
+	// Move the date to the end.
+	$dateField = $listing_columns['date'];
+	unset($listing_columns['date']);
+	
+	// Stores the type - normal or split test.
+    $listing_columns['sptk_sp_cache_status'] = __('Cached?', 'sptk_for_wp');
+    
+    // Add date back in
+    $listing_columns['date'] = $dateField;
+
+    return $listing_columns;
+}
+*/
+
+
+/**
+ * Handle showing the meta data for each squeeze page.
+ * 
+ * @param String $column_name The name of the column to modify.
+ * @param Integer $post_id The ID of the post being rendered.
+ */
+/*function SPTK_admin_table_addPageMetadata_content($column_name, $post_id) 
+{
+    global $wpdb;
+    switch ($column_name)
+    {
+    	// Shows if a page is currently being cached or not.
+	    case 'sptk_sp_cache_status':
+	    	
+	    	// Get the associated pages first
+	    	$associatedPage = get_post_meta($post_id, '_sptk_associated_page_id', true);
+	    	$pageList = SPTK_cache_getAllPagesForCacheID('sptk_page_cache_' . $associatedPage);
+	    	
+	    	// Page List should be full if so.
+	    	if (!empty($pageList))
+	    	{
+	    		_e('Cached', 'sptk_for_wp');
+	    	}
+	    	
+	    	// Not cached
+	    	else {
+	    		echo '-';
+	    	}
+	    	
+		break;
+		
+    } // end switch
+}  */
+
 
 
 /**
@@ -73,15 +132,20 @@ function SPTK_meta_saveSqueezePageSelection($post_id)
 		return;
 	}
 	
+	// No associated page, abort.
+	if (!isset($_POST['sptk_associated_page_id'])) {
+		return;
+	}
+	
 	// Sanitize user input.
 	$pageSelection = sanitize_text_field($_POST['sptk_associated_page_id']);
 
 	// Update the meta field in the database.
 	update_post_meta($post_id, '_sptk_associated_page_id', $pageSelection);
 	
-	// Remove the transient associated with the page, to remove the caching.
-	delete_transient('sptk_page_cache_'.$pageSelection);
-	delete_transient('sptk_page_cache_'.$pageSelection.'_thanks'); // The associated thanks page.
+	// Remove the cached page data when saving the page.
+	SPTK_cache_clearPageData('sptk_page_cache_'.$pageSelection); 
+	SPTK_cache_clearPageData('sptk_page_cache_'.$pageSelection.'_thanks'); // The associated thanks page.
 }
 
 
@@ -92,6 +156,17 @@ function SPTK_showPage_Settings()
 {
 	$page = new PageBuilder(true);
 	$page->showPageHeader(__('Squeeze Page Toolkit for WordPress - Settings', 'sptk_for_wp'));
+	
+	
+	// Check for cache cleaning.
+	if (isset($_GET['clear_cache']) && 'true' == $_GET['clear_cache'])
+	{
+		SPTK_cache_clearCacheAllPages();
+		$page->showMessage(__('Squeeze page cache has been cleared.', 'sptk_for_wp'));
+	}
+	
+	
+	
 	$page->openPane('sptk_for_wp_settings', __('Your Settings', 'sptk_for_wp'));
 	
 	$settingsFields = array(
@@ -123,7 +198,7 @@ function SPTK_showPage_Settings()
 			
 	);
 	
-	// Show the form
+	// ### Page Settings - Show the form
 	$settings = new SettingsForm($settingsFields, SPTK_DATABASE_SETTINGS_KEY, 'sptk_form_settings');
 	
 	// Form event handlers - processes the saved settings in some way 
@@ -132,6 +207,15 @@ function SPTK_showPage_Settings()
 	$settings->show();
 	
 	
+	// ### Cache Clean - Show the section to clear the page cache.
+	$page->openPane('sptk_for_wp_settings_cache', __('Squeeze Page Cache', 'sptk_for_wp'));
+	printf('<p>%s</p>', __('To ensure your squeeze pages load as quickly as possible, they are cached on the same server as your WordPress website. If you need to clean out that cache for any reason (such as your pages are not refreshing), then just click on the button below.', 'sptk_for_wp'));
+	
+	printf('<p><a href="%s" class="button-primary">%s</a></p>',
+		admin_url('edit.php?post_type=squeeze_page&page=SPTK_showPage_Settings&clear_cache=true'), 
+		__('Clear Squeeze Page Cache', 'sptk_for_wp')
+	);
+	 
 	
 	$page->showPageFooter();
 }
@@ -194,9 +278,10 @@ function SPTK_showPage_Settings_afterSave($formValues)
 	// Flush the cache for the selected home page if there is one.
 	if ($pageSelection = SPTK_arrays_getValue($formValues, 'homepage_squeeze', false))
 	{
-		// Homepage transients have a slightly different name
-		delete_transient('sptk_page_cache_'.$pageSelection . '_homepage_squeeze');
-		delete_transient('sptk_page_cache_'.$pageSelection.'_thanks' . '_homepage_squeeze'); // The associated thanks page.
+		// Homepage cache name have a slightly different name to standard pages.
+		SPTK_cache_clearPageData('sptk_page_cache_' . $pageSelection . '_homepage_squeeze'); 
+		SPTK_cache_clearPageData('sptk_page_cache_' . $pageSelection . '_thanks_homepage_squeeze'); // The associated thanks page.
+
 	}
 }
 
