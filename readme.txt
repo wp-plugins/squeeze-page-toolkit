@@ -3,7 +3,7 @@ Contributors: DanHarrison
 Tags: squeeze page toolkit, squeeze pages, landing pages, opt-in boxes
 Requires at least: 3.7
 Tested up to: 3.9.1
-Stable tag: 1.12
+Stable tag: 1.13
 License: Apache 2.0
 License URI: http://www.apache.org/licenses/LICENSE-2.0
 
@@ -74,6 +74,9 @@ Yes! All pages are automatically mobile responsive.
 
 
 == Changelog ==
+
+= 1.13 =
+* Increased page fetch timeout to 15 seconds.
 
 = 1.12 = 
 * Improved page finding ability to remove a small bug that occurs in very rare situations.

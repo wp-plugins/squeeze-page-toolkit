@@ -50,7 +50,8 @@ function SPTK_api_getListOfSqueezePages()
 	);
 	
 	$httpArgs = array(
-		'body'	=> array('apiKey' => TidySettings_getSettingSingle(SPTK_DATABASE_SETTINGS_KEY, 'remote_api_key')),
+		'body'		=> array('apiKey' => TidySettings_getSettingSingle(SPTK_DATABASE_SETTINGS_KEY, 'remote_api_key')),
+		'timeout'	=> 15, // 15 seconds
 	);
 	
 	// Do the actual request now
