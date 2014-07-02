@@ -2,8 +2,8 @@
 Contributors: DanHarrison 
 Tags: squeeze page toolkit, squeeze pages, landing pages, opt-in boxes
 Requires at least: 3.7
-Tested up to: 3.9
-Stable tag: 1.11
+Tested up to: 3.9.1
+Stable tag: 1.12
 License: Apache 2.0
 License URI: http://www.apache.org/licenses/LICENSE-2.0
 
@@ -23,7 +23,7 @@ The benefits of the Squeeze Page Toolkit on WordPress:
 * Your landing pages are *completely independent of your theme*, which means you can change your theme as much as you like without needing to worry about your landing pages going wrong.
 * You can benefit from all of the <b>useful statistics</b>, so that you know how well your pages are performing without needing to do any techie stuff. 
 
-To use this WordPress plugin, you'll need a Squeeze Page Toolkit account. You can get a [30-day free trial account](http://www.squeezepagetoolkit.com/trial) or you can [watch a demo](http://www.squeezepagetoolkit.com/demo) to see how the toolkit works.
+To use this WordPress plugin, *you'll need a Squeeze Page Toolkit account*. You can get a [30-day free trial account](http://www.squeezepagetoolkit.com/trial) or you can [watch a demo](http://www.squeezepagetoolkit.com/demo) to see how the toolkit works.
 
 == Installation ==
 
@@ -74,6 +74,11 @@ Yes! All pages are automatically mobile responsive.
 
 
 == Changelog ==
+
+= 1.12 = 
+* Improved page finding ability to remove a small bug that occurs in very rare situations.
+* Added a new squeeze page cache flush capability where the pages on WordPress website are refreshed when updated on SPTK.
+* Added support for squeeze pages that work with split testing.
 
 = 1.11 = 
 * Added new reminder message about updating permalinks when updated or installed.

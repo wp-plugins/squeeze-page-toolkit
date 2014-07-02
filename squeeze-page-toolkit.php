@@ -1,7 +1,7 @@
 <?php 
 /*
  * Plugin Name: Squeeze Page Toolkit
- * Version: 1.11
+ * Version: 1.12
  * Plugin URI: http://wordpress.org/plugins/squeeze-page-toolkit/
  * Description: The official plugin for the Squeeze Page Toolkit for WordPress, allowing you to show your squeeze pages on your WordPress website.
  * Author: WordPress Doctors
@@ -9,7 +9,7 @@
  */
 
 /** The current version of the database. */
-define('SPTK_DATABASE_VERSION', 		'1.11');
+define('SPTK_DATABASE_VERSION', 		'1.1211');
 
 /** The current version of the database. */
 define('SPTK_DATABASE_KEY', 			'SPTK_Version');
@@ -18,13 +18,17 @@ define('SPTK_DATABASE_KEY', 			'SPTK_Version');
 define('SPTK_DATABASE_SETTINGS_KEY', 	'SPTK_Settings');
 
 /** The base URL to use for the API requests. */
-define('SPTK_API_BASE',					'http://www.squeezepagetoolkit.com/api/v1'); 
+define('SPTK_API_BASE',					'http://www.squeezepagetoolkit.com/api/v1');  
 
 /** The ID of the plugin for update purposes, must be the file path and file name. */
 define('SPTK_PLUGIN_UPDATE_ID', 		'sptk-for-wp/squeeze-page-toolkit.php');
 
 /** If true, then caching is disabled. */
 define('SPTK_DEBUG_MODE', 				false);
+
+
+/** Plugin database details. */
+include_once 'lib/db.inc.php';
 
 
 // Load admin scripts
@@ -53,6 +57,8 @@ include_once 'lib/common.inc.php';
  */
 function SPTK_plugin_init()
 {
+	SPTK_plugin_setup(false);	
+	
 	// ### Admin
 	if (is_admin())
 	{
@@ -75,6 +81,14 @@ function SPTK_plugin_init()
 		// Notices about permalinks
 		add_action('admin_notices', 							'SPTK_plugin_permalinkCheck');
 		add_action('generate_rewrite_rules' , 					'SPTK_plugin_permalinkCheck_permalinksUpdated', 10, 1);
+		
+		// Add custom admin bar menu
+		add_action('admin_bar_menu', 							'SPTK_plugin_adminBar_customMenu', 999);
+		
+		// Custom meta data for squeeze page post listings
+		// Not used currently, kept here for future implementation.
+		//add_filter('manage_edit-squeeze_page_columns', 			'SPTK_admin_table_addPageMetadata_headings');
+		//add_action('manage_squeeze_page_posts_custom_column', 	'SPTK_admin_table_addPageMetadata_content', 10, 2);
 	}
 
 	// ### Frontend
@@ -100,10 +114,142 @@ function SPTK_plugin_init()
 		add_action('pre_get_posts',  'SPTK_urlClean_findSqueezePage');  
 		add_filter('post_type_link', 'SPTK_urlClean_removeSlug', 10, 3);	
 	}
+	
 }
 add_action('init', 'SPTK_plugin_init');
 
 
+/**
+ * Install the plugin, initialise the default settings, and create the tables.
+ */
+function SPTK_plugin_setup($force)
+{
+	$installed_ver  = get_option(SPTK_DATABASE_KEY) + 0;
+	$current_ver    = SPTK_DATABASE_VERSION + 0;
+
+	// Performing an upgrade
+	if ($current_ver != $installed_ver || $force)
+	{
+		// Upgrade database tables if version change.
+		SPTK_database_upgradeTables($installed_ver);
+	}
+}
+
+
+
+/**
+ * Function to upgrade the database tables.
+ * 
+ * @param Integer $installedVersion The version that exists prior to the upgrade.
+ * @param Boolean $showErrors If true, show any debug errors.
+ */
+function SPTK_database_upgradeTables($installedVersion, $showErrors = false)
+{
+	global $wpdb;
+		
+	if ($showErrors) {
+		$wpdb->show_errors();
+	}
+	
+	$sptkdb = new SPTK_Database();
+
+	// Page Cache - Stores the HTML from SPTK
+	$SQL = "CREATE TABLE $sptkdb->page_cache (
+			  page_cache_id VARCHAR(100) NOT NULL,
+			  page_index VARCHAR(30) NOT NULL,
+			  page_html TEXT,
+			  page_cached_date DATETIME NULL,
+			  page_hash VARCHAR(50) NOT NULL
+			) ENGINE=InnoDB CHARSET=utf8";
+
+	SPTK_database_installTable($sptkdb->page_cache, $SQL, true);
+	
+
+	
+	// Update settings once upgrade has happened
+	update_option(SPTK_DATABASE_KEY, SPTK_DATABASE_VERSION);
+}
+
+
+
+
+/**
+ * Install or upgrade a table for this plugin.
+ * 
+ * @param String $tableName The name of the table to upgrade/install.
+ * @param String $SQL The core SQL to create or upgrade the table
+ * @param String $upgradeTables If true, we're upgrading to a new level of database tables.
+ */
+function SPTK_database_installTable($tableName, $SQL, $upgradeTables)
+{
+	global $wpdb;
+
+	// Determine if the table exists or not.
+	$tableExists = ($wpdb->get_var("SHOW TABLES LIKE '$tableName'") == $tableName);
+
+	// Table doesn't exist or needs upgrading
+	if (!$tableExists || $upgradeTables)
+	{
+		require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
+		dbDelta($SQL);
+	}
+}
+
+
+
+
+/**
+ * Add custom menu to admin bar for the squeeze pages.
+ * @param Object $wp_admin_bar The admin bar object.
+ */
+function SPTK_plugin_adminBar_customMenu($wp_admin_bar)
+{
+	// Parent - Squeeze Pages
+	$args = array(
+		'id'    	=> 'sptk_for_wp_adminbar',
+		'title' 	=> __('Squeeze Pages', 'sptk_for_wp'),
+		'href' 	 	=> admin_url('edit.php?post_type=squeeze_page'),
+		'meta'  	=> array('class' => 'sptk_for_wp_adminbar' )
+	);
+	$wp_admin_bar->add_node($args);
+	
+	
+	// Child - Add Page
+	$args = array(
+		'parent' 	=> 'sptk_for_wp_adminbar',
+		'id'    	=> 'sptk_for_wp_adminbar_add',
+		'title' 	=> __('Add New Page', 'sptk_for_wp'),
+		'href'  	=> admin_url('post-new.php?post_type=squeeze_page'),
+		'meta'  	=> array('class' => 'sptk_for_wp_adminbar' )
+	);
+	$wp_admin_bar->add_node($args);
+	
+	
+	// Child - Settings
+	$args = array(
+		'parent' 	=> 'sptk_for_wp_adminbar',
+		'id'    	=> 'sptk_for_wp_adminbar_settings',
+		'title' 	=> __('Settings', 'sptk_for_wp'),
+		'href'  	=> admin_url('edit.php?post_type=squeeze_page&page=SPTK_showPage_Settings'),
+		'meta'  	=> array('class' => 'sptk_for_wp_adminbar' )
+	);
+	$wp_admin_bar->add_node($args);
+	
+	
+	// Child - Cache clean
+	$args = array(
+		'parent' 	=> 'sptk_for_wp_adminbar',
+		'id'    	=> 'sptk_for_wp_adminbar_cache_clean',
+		'title' 	=> __('Clear Page Cache', 'sptk_for_wp'),
+		'href'  	=> admin_url('edit.php?post_type=squeeze_page&page=SPTK_showPage_Settings&clear_cache=true'),
+		'meta'  	=> array('class' => 'sptk_for_wp_adminbar' )
+	);
+	$wp_admin_bar->add_node($args);
+	
+	
+	
+	
+}
 
 
 /**
@@ -190,8 +336,6 @@ function SPTK_plugin_registerCustomPostTypes()
 	register_post_type('squeeze_page', $args );
 }
 
-
-
 /** 
  * Use a database query to try to find the post that's being fetched.
  * Method 1 - New Version
@@ -220,15 +364,26 @@ function SPTK_plugin_registerCustomPostTypes()
  * Use a database query to try to find the post that's being fetched.
  */
 function SPTK_urlClean_findSqueezePage($query)
-{
+{	
     global $wpdb;
     
-    // 2014-01-15 - is_home() check is for Emma's issue with homepage redirecting to a squeeze page.
-    if (is_admin() ||											// Checks for front of site only 
-    	!$query->is_main_query() || 							// Checks that it's a main query
-    	is_home() || 											// Check that we're not on the homepage
-    	is_front_page()	||										// Check we haven't got a static front page
-    	$query->get('page_id') == get_option('page_on_front')	// Backup check for a static front page if is_home() is false if theme is broken
+	if (
+	    	// Checks for front of site only
+	    	is_admin() ||											
+	    	
+	    	// Check that we're not on the homepage
+	    	is_home() || 											
+	    	
+	    	// Check we haven't got a static front page
+	    	// Check if ->post isset first, otherwise is_front_page() may return an error because
+	    	// it relies on ->post.
+	    	(isset($query->post) && is_front_page()) ||						
+
+	    	// Checks that it's a main query
+	    	!$query->is_main_query() ||
+	    	
+	    	// Backup check for a static front page if is_home() is false if theme is broken
+	    	($query->get('page_id') > 0 && $query->get('page_id') == get_option('page_on_front'))	
     	) {				
 		return;
     }
@@ -279,8 +434,15 @@ function SPTK_urlClean_findSqueezePage($query)
 			case 'squeeze_page':
 				// Triggers a reset of the query (especially for non-std categories) to pick
 				// up the new page ID, regardless if it thinks this is a category or not.
-				if (!$normalPermalink) {
-					$query->parse_query('p=' . $post_type->ID);
+				if (!$normalPermalink)
+				{
+					$query->parse_query('p=' . $postInfo->ID);
+					
+					// Manually add support for the thanks variable for non-standard
+					// permalinks, otherwise it gets missed.
+					if (isset($_GET['thanks']) && $_GET['thanks'] == 'yep') {
+						$query->set('thanks', 'yep');
+					}
 				}
 				
 	        	$query->set('squeeze_page', $post_name);

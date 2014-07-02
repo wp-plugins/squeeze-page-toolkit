@@ -1275,7 +1275,7 @@ class FormElement {
 						}
 						
 						$elementString .= "\n\t\t\t";
-						$elementString .= sprintf('<input type="checkbox" name="%s_%s" class="%s_%s" %s style="width: auto"/>&nbsp;%s<br/>', 
+						$elementString .= sprintf('<label><input type="checkbox" name="%s_%s" class="%s_%s" %s style="width: auto"/>&nbsp;<span class="label-text">%s</span></label><br/>', 
 											$this->name, $value,
 											$this->name, $value,
 											$htmlselected, 
