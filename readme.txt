@@ -2,8 +2,8 @@
 Contributors: DanHarrison 
 Tags: squeeze page toolkit, squeeze pages, landing pages, opt-in boxes
 Requires at least: 3.7
-Tested up to: 3.9
-Stable tag: 1.10
+Tested up to: 3.9.1
+Stable tag: 1.12
 License: Apache 2.0
 License URI: http://www.apache.org/licenses/LICENSE-2.0
 
@@ -23,7 +23,7 @@ The benefits of the Squeeze Page Toolkit on WordPress:
 * Your landing pages are *completely independent of your theme*, which means you can change your theme as much as you like without needing to worry about your landing pages going wrong.
 * You can benefit from all of the <b>useful statistics</b>, so that you know how well your pages are performing without needing to do any techie stuff. 
 
-To use this WordPress plugin, you'll need a Squeeze Page Toolkit account. You can get a [30-day free trial account](http://www.squeezepagetoolkit.com/trial) or you can [watch a demo](http://www.squeezepagetoolkit.com/demo) to see how the toolkit works.
+To use this WordPress plugin, *you'll need a Squeeze Page Toolkit account*. You can get a [30-day free trial account](http://www.squeezepagetoolkit.com/trial) or you can [watch a demo](http://www.squeezepagetoolkit.com/demo) to see how the toolkit works.
 
 == Installation ==
 
@@ -51,13 +51,14 @@ There are no special upgrade notices currently.
 
 All of the clever stuff that makes the landing pages work effectively is all done by the Squeeze Page Toolkit. The WordPress plugin allows you to use your landing pages with Google Adwords as they require that your landing page URL matches a real website. 
 
-Packages for the toolkit start at £19+VAT per month, however, you can also test this WordPress plugin (and the toolkit) by using the [30-day free trial account](http://www.squeezepagetoolkit.com/trial).
+Packages for the toolkit start at &pound;19+VAT per month, however, you can also test this WordPress plugin (and the toolkit) by using the [30-day free trial account](http://www.squeezepagetoolkit.com/trial).
 
 
 = When I've connected a Squeeze Page - but I'm getting a 404 message. Help! =
 
 1. Have you updated your permalinks recently? Go to `Permalinks` in WP admin, and click on the `Save Changes` button.
 1. If you have any other landing page tools on WordPress, this may interfere with this plugin, so do try disabling them first to see if that resolves the issue.
+1. See the reference about [URL compatibility mode](http://support.wpdoctors.co.uk/support/solutions/articles/3000009178) for  the WordPress plugin.  
 1. If that doesn't solve the issue, then please contact [Squeeze Page Toolkit support](http://support.wpdoctors.co.uk/support/home) with what you have in `Custom Structure` in the `Permalinks` section in WP admin.
 
 = Can I use a squeeze page for my website landing page? =
@@ -68,7 +69,21 @@ Yes! You can select this option by visiting `Squeeze Pages` and then `Settings`.
 
 Yes! All pages are automatically mobile responsive.
 
+
+
+
+
 == Changelog ==
+
+= 1.12 = 
+* Improved page finding ability to remove a small bug that occurs in very rare situations.
+* Added a new squeeze page cache flush capability where the pages on WordPress website are refreshed when updated on SPTK.
+* Added support for squeeze pages that work with split testing.
+
+= 1.11 = 
+* Added new reminder message about updating permalinks when updated or installed.
+* Added manual override for the URL if WordPress URLs don't work.
+
 
 = 1.10 =
 * Feature - Improvements for handling permalinks for blogs with different setups.
