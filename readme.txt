@@ -2,8 +2,8 @@
 Contributors: DanHarrison 
 Tags: squeeze page toolkit, squeeze pages, landing pages, opt-in boxes
 Requires at least: 3.7
-Tested up to: 3.9.1
-Stable tag: 1.13
+Tested up to: 4.0.0
+Stable tag: 1.14
 License: Apache 2.0
 License URI: http://www.apache.org/licenses/LICENSE-2.0
 
@@ -58,8 +58,8 @@ Packages for the toolkit start at &pound;19+VAT per month, however, you can also
 
 1. Have you updated your permalinks recently? Go to `Permalinks` in WP admin, and click on the `Save Changes` button.
 1. If you have any other landing page tools on WordPress, this may interfere with this plugin, so do try disabling them first to see if that resolves the issue.
-1. See the reference about [URL compatibility mode](http://support.wpdoctors.co.uk/support/solutions/articles/3000009178) for  the WordPress plugin.  
-1. If that doesn't solve the issue, then please contact [Squeeze Page Toolkit support](http://support.wpdoctors.co.uk/support/home) with what you have in `Custom Structure` in the `Permalinks` section in WP admin.
+1. See the reference about [URL compatibility mode](http://www.squeezepagetoolkit.com/training/im-getting-404-errors-when-trying-to-view-my-squeeze-pages-in-wordpress/) for  the WordPress plugin.  
+1. If that doesn't solve the issue, then please contact [Squeeze Page Toolkit support](http://squeezepagetoolkit.com/support/) with what you have in `Custom Structure` in the `Permalinks` section in WP admin.
 
 = Can I use a squeeze page for my website landing page? =
 
@@ -74,6 +74,11 @@ Yes! All pages are automatically mobile responsive.
 
 
 == Changelog ==
+
+= 1.14 =
+* Added improvement to page fetch for exotic WordPress installations.
+* Changed support links to new Squeeze Page Toolkit website
+* Tested against WordPress 4.0
 
 = 1.13 =
 * Increased page fetch timeout to 15 seconds.
