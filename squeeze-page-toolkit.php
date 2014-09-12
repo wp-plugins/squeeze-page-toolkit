@@ -1,15 +1,15 @@
 <?php 
 /*
  * Plugin Name: Squeeze Page Toolkit
- * Version: 1.13
+ * Version: 1.14
  * Plugin URI: http://wordpress.org/plugins/squeeze-page-toolkit/
  * Description: The official plugin for the Squeeze Page Toolkit for WordPress, allowing you to show your squeeze pages on your WordPress website.
- * Author: WordPress Doctors
- * Author URI: http://www.wpdoctors.co.uk
+ * Author: Squeeze Page Toolkit
+ * Author URI: http://www.squeezepagetoolkit.com
  */
 
 /** The current version of the database. */
-define('SPTK_DATABASE_VERSION', 		'1.13');
+define('SPTK_DATABASE_VERSION', 		'1.14');
 
 /** The current version of the database. */
 define('SPTK_DATABASE_KEY', 			'SPTK_Version');
@@ -406,6 +406,11 @@ function SPTK_urlClean_findSqueezePage($query)
     	case '/%postname%/':
     			$normalPermalink = true;
     			$post_name = $query->get('name');
+    			
+    			// Sometimes the name is empty, hence checking page name too.
+    			if (empty($post_name)) {
+    				$post_name = $query->get('pagename');
+    			}
     		break;
     		
     	// Year/Month/Day/Post
