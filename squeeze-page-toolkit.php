@@ -1,7 +1,7 @@
 <?php 
 /*
  * Plugin Name: Squeeze Page Toolkit
- * Version: 1.14
+ * Version: 1.15
  * Plugin URI: http://wordpress.org/plugins/squeeze-page-toolkit/
  * Description: The official plugin for the Squeeze Page Toolkit for WordPress, allowing you to show your squeeze pages on your WordPress website.
  * Author: Squeeze Page Toolkit
@@ -9,7 +9,7 @@
  */
 
 /** The current version of the database. */
-define('SPTK_DATABASE_VERSION', 		'1.14');
+define('SPTK_DATABASE_VERSION', 		'1.15');
 
 /** The current version of the database. */
 define('SPTK_DATABASE_KEY', 			'SPTK_Version');
@@ -157,7 +157,7 @@ function SPTK_database_upgradeTables($installedVersion, $showErrors = false)
 	$SQL = "CREATE TABLE $sptkdb->page_cache (
 			  page_cache_id VARCHAR(100) NOT NULL,
 			  page_index VARCHAR(30) NOT NULL,
-			  page_html TEXT,
+			  page_html MEDIUMTEXT,
 			  page_cached_date DATETIME NULL,
 			  page_hash VARCHAR(50) NOT NULL
 			) ENGINE=InnoDB CHARSET=utf8";
