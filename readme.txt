@@ -2,8 +2,8 @@
 Contributors: DanHarrison 
 Tags: squeeze page toolkit, squeeze pages, landing pages, opt-in boxes
 Requires at least: 3.7
-Tested up to: 4.0.0
-Stable tag: 1.14
+Tested up to: 4.1.0
+Stable tag: 1.15
 License: Apache 2.0
 License URI: http://www.apache.org/licenses/LICENSE-2.0
 
@@ -74,6 +74,9 @@ Yes! All pages are automatically mobile responsive.
 
 
 == Changelog ==
+
+= 1.15 =
+* Added support for longer squeeze pages and landing pages by improving page caching support.
 
 = 1.14 =
 * Added improvement to page fetch for exotic WordPress installations.
