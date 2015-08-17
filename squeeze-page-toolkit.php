@@ -1,7 +1,7 @@
 <?php 
 /*
  * Plugin Name: Squeeze Page Toolkit
- * Version: 1.15
+ * Version: 1.16
  * Plugin URI: http://wordpress.org/plugins/squeeze-page-toolkit/
  * Description: The official plugin for the Squeeze Page Toolkit for WordPress, allowing you to show your squeeze pages on your WordPress website.
  * Author: Squeeze Page Toolkit
@@ -18,7 +18,7 @@ define('SPTK_DATABASE_KEY', 			'SPTK_Version');
 define('SPTK_DATABASE_SETTINGS_KEY', 	'SPTK_Settings');
 
 /** The base URL to use for the API requests. */
-define('SPTK_API_BASE',					'http://www.squeezepagetoolkit.com/api/v1');  
+define('SPTK_API_BASE',					'http://app.squeezepagetoolkit.com/api/v1');  
 
 /** The ID of the plugin for update purposes, must be the file path and file name. */
 define('SPTK_PLUGIN_UPDATE_ID', 		'sptk-for-wp/squeeze-page-toolkit.php');
